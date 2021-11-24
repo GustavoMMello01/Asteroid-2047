@@ -12,23 +12,27 @@ public class Asteroid
     float veloy = 0.005f;
     float radius = 0.5f;
     int ticks = 0;
+    float maxy;
+    float variance;
+    float color;
 
     public Asteroid(Vector2 sb){
         var random = new Random();
+        radius = (float)random.NextDouble() * 0.7f + 0.2f;
         bx = (float) random.NextDouble() * sb.x * 2 - sb.x;
-        by = sb.y;
-
+        maxy = sb.y + 2 * radius;
+        by = maxy;
+        variance = (float) random.NextDouble() - 0.5f;
+        color = (float) random.NextDouble() * 0.5f + 0.5f;
     }
 
-    // Start is called before the first frame update
     public void Start()
     {
        var random = new Random();
-        velox = (float) Math.Max(random.NextDouble(), 0.2) * 0.01f - 0.005f;
-        veloy = (float) Math.Max(random.NextDouble(), 0.2) * -0.01f;
+        velox = (float) Math.Max(random.NextDouble(), 0.4) * 0.01f - 0.005f;
+        veloy = (float) Math.Max(random.NextDouble(), 0.4) * -0.01f;
     }
 
-    // Update is called once per frame
     public void Update()
     {
         by += veloy;
@@ -36,13 +40,14 @@ public class Asteroid
         ticks ++;
     }
 
-    public void render(){
+    public void Render(Material mat){
 
-        var inc = (2 * Mathf.PI)/6;
-        var offset = ticks * 0.01f;
+        var inc = (2 * Mathf.PI)/(int)Math.Max(Math.Min(radius * 10, 8), 2);
+        var offset = ticks * 0.04f * variance;
 
         GL.PushMatrix();
-        GL.Color(Color.white);
+        mat.SetPass(0);
+        GL.Color(new Color(0, color, color));
         GL.Begin(GL.LINES);
 
         for(float t=0.0f; t < (2 * Mathf.PI); t += inc)
@@ -60,8 +65,17 @@ public class Asteroid
     public bool isHit(float x, float y){
         var dist = Math.Pow(x - bx, 2) + Math.Pow(y - by, 2);
 
-        return dist <= 2;
+        return dist <= radius;
     }
 
+    public bool isOutOfScreen()
+    {
+        return by < -maxy;
+    }
+
+    public bool hasBeenHit(float x, float y)
+    {
+        return by + radius > y - 0.25f && by - radius  < y + 0.25f && bx + radius > x && bx - radius < x;
+    }
 
 }

@@ -10,23 +10,48 @@ public class GLDraw : MonoBehaviour
     public Vector2 sb;
     public float by = 0;
     float bx = 0;
+    float momentumx = 0;
+    float momentumy = 0;
     float velo = 0.05f;
     List<Asteroid> asteroids = new List<Asteroid>();
+    List<Projectile> projectiles = new List<Projectile>();
     public Text ScoreText;
-
+    public Text LifeText;
+    private float timerAsteroid;
+    private float timerAsteroidMs = 0.5f;
+    private float timerProjectile;
     private float timer;
     private float score;
+    private int life = 3;
+    private int Life { get => life;
+        set {
+            life = value;
+            timerAsteroidMs = 2;
+            if (life == 0)
+            {
+                score = 0;
+                life = 3;
+                menu.SetActive(true);
+                inGame.SetActive(false);
+            }
+            LifeText.text = life.ToString();
+        }
+    }
 
+    public GameObject menu;
+    public GameObject inGame;
 
-
-    
-    
     private void OnPostRender() {
         drawShip();
         foreach (var asteroid in asteroids)
         {
-            asteroid.render();
+            asteroid.Render(mat);
         }
+        foreach (var projectile in projectiles)
+        {
+            projectile.Render();
+        }
+
     }
 
     void Start()
@@ -37,25 +62,32 @@ public class GLDraw : MonoBehaviour
 
     private void Update() {
 
+        if (!inGame.activeSelf)
+        {
+            return;
+        }
+
         sb = Camera.main.ScreenToWorldPoint(new Vector2(Screen.width, Screen.height));
 
-
+        float velox = 0;
+        float veloy = 0;
         if(Input.GetKey(KeyCode.LeftArrow)) {
-            bx -= velo;
+            velox -= velo;
         }
         if (Input.GetKey(KeyCode.RightArrow)) {
-            bx += velo;
+            velox += velo;
         }
         if(Input.GetKey(KeyCode.DownArrow)) {
-            by -= velo;
+            veloy -= velo;
         }
         if (Input.GetKey(KeyCode.UpArrow)) {
-            by += velo;
+            veloy += velo;
         }
 
-        if (Input.GetKey(KeyCode.Space)) {
-            spawnAsteroid();
-        }
+        momentumx = System.Math.Min(velox * 2 * Time.deltaTime + momentumx * ( 1 - 0.75f * Time.deltaTime), velo);
+        momentumy = System.Math.Min(veloy * 2 * Time.deltaTime + momentumy * (1 - 0.75f * Time.deltaTime), velo);
+        bx += momentumx;
+        by += momentumy;
 
         sb -= new Vector2(0.5f, 0.5f);
 
@@ -73,6 +105,11 @@ public class GLDraw : MonoBehaviour
             bx = -sb.x;
         }
 
+        foreach (var projectile in projectiles)
+        {
+            projectile.Update();
+        }
+
         var hit = false;
 
         foreach (var asteroid in asteroids)
@@ -81,13 +118,29 @@ public class GLDraw : MonoBehaviour
             if (asteroid.isHit(bx, by)){
                 hit = true;
             }
+        
         }
 
         if (hit){
+            Life -= 1;
             asteroids.Clear();
         }
 
+        asteroids.RemoveAll(a => {
+            foreach (var projectile in projectiles)
+            {
+                if (projectile.isHit(a))
+                {
+                    return true;
+                }
+            }
+            return a.isOutOfScreen();
+           });
 
+        projectiles.RemoveAll(p => p.isOutOfScreen());
+
+        addProjectile();
+        addAsteroid();
         Move();
         addScore();
 
@@ -137,5 +190,31 @@ public class GLDraw : MonoBehaviour
             timer = 0;
         }
     }
-    
+
+    void addProjectile()
+    {
+        timerProjectile += Time.deltaTime;
+
+        if(timerProjectile > 0.4f && Input.GetKey(KeyCode.Space))
+        {
+            timerProjectile = 0;
+            projectiles.Add(new Projectile(bx, by, sb));
+        }
+    }
+
+
+    void addAsteroid()
+    {
+        timerAsteroid += Time.deltaTime;
+
+        if (timerAsteroid > timerAsteroidMs)
+        {
+            spawnAsteroid();
+            timerAsteroidMs = Random.Range(0.005f, 0.4f );
+            timerAsteroid = 0;
+        }
+    }
+
+
+
 }
